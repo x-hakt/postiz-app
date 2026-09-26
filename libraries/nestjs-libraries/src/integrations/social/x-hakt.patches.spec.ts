@@ -104,3 +104,25 @@ describe('Facebook Page Reels (x-hakt patch)', () => {
     expect(await fb.checkValidity([[{ path: 'a.mp4' }]], { post_type: 'reel' })).toBe(true);
   });
 });
+
+describe('Instagram audio search (x-hakt patch)', () => {
+  it('asks for 100 per page, follows the cursor, and de-duplicates', async () => {
+    const ig: any = new InstagramProvider();
+    const page = (ids: string[], after?: string) => ({ audio: ids.map((id) => ({ audio_id: id, title: `t${id}`, display_artist: 'a' })), ...(after ? { paging: { cursors: { after } } } : {}) });
+    const calls = stubFetch(ig, (url) =>
+      url.includes('after=c2') ? page(['5']) : url.includes('after=c1') ? page(['3', '4', '2'], 'c2') : page(['1', '2'], 'c1'));
+    const list = await ig.audioSearch('tok___user', { q: 'love', type: 'music' }, 'ig-1');
+    expect(calls).toHaveLength(3);
+    expect(calls.every((c) => c.url.includes('limit=100') && c.url.includes('search_query=love') && c.url.includes('access_token=user'))).toBe(true);
+    expect(list.map((a: any) => a.id)).toEqual(['1', '2', '3', '4', '5']);
+  });
+
+  it('stops after 5 pages even if Meta keeps offering more', async () => {
+    const ig: any = new InstagramProvider();
+    let n = 0;
+    const calls = stubFetch(ig, () => ({ audio: [{ audio_id: `x${n++}` }], paging: { cursors: { after: `c${n}` } } }));
+    await ig.audioSearch('tok', { type: 'original_sound' }, 'ig-1');
+    expect(calls).toHaveLength(5);
+    expect(calls[0].url).toContain('audio_type=original_sound');
+  });
+});

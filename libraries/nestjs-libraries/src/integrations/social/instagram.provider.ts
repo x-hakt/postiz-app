@@ -1222,13 +1222,30 @@ export class InstagramProvider
     const audioType =
       data?.type === 'original_sound' ? 'original_sound' : 'music';
 
-    const { audio } = await (
-      await this.fetch(
-        `https://graph.facebook.com/${META_GRAPH_API_VERSION}/ig_audio?audio_type=${audioType}&user_id=${internalId}${
-          data?.q ? `&search_query=${encodeURIComponent(data.q)}` : ''
-        }&access_token=${userToken || accessToken}`
-      )
-    ).json();
+    // x-hakt: Meta returns 25 per page by default with a cursor to more; Postiz
+    // showed only the first page. Ask for 100 per page and follow the cursor
+    // (up to 5 pages), de-duplicated. Live on 2026-09-26: trending 25 -> 98,
+    // "love" 25 -> 116.
+    const audio: any[] = [];
+    const seen = new Set<string>();
+    let after = '';
+    for (let page = 0; page < 5; page++) {
+      const res = await (
+        await this.fetch(
+          `https://graph.facebook.com/${META_GRAPH_API_VERSION}/ig_audio?audio_type=${audioType}&user_id=${internalId}${
+            data?.q ? `&search_query=${encodeURIComponent(data.q)}` : ''
+          }&limit=100${after ? `&after=${encodeURIComponent(after)}` : ''}&access_token=${userToken || accessToken}`
+        )
+      ).json();
+      const batch: any[] = res?.audio || [];
+      const fresh = batch.filter((a) => a?.audio_id && !seen.has(a.audio_id));
+      fresh.forEach((a) => seen.add(a.audio_id));
+      audio.push(...fresh);
+      after = res?.paging?.cursors?.after || '';
+      if (!after || !fresh.length) {
+        break;
+      }
+    }
 
     return (audio || []).map((audio: any) => ({
       id: audio.audio_id,
