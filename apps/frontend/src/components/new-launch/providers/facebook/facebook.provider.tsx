@@ -23,6 +23,11 @@ const postType = [
     label: 'Post',
   },
   {
+    // x-hakt: Page Reels
+    value: 'reel',
+    label: 'Reel',
+  },
+  {
     value: 'story',
     label: 'Story',
   },
@@ -37,7 +42,8 @@ export const FacebookSettings = () => {
 
   // Facebook background presets only render on text-only Page posts (no media).
   const hasMedia = !!value?.some((p) => !!p.image?.length);
-  const presetAvailable = postCurrentType !== 'story' && !hasMedia;
+  const presetAvailable =
+    postCurrentType !== 'story' && postCurrentType !== 'reel' && !hasMedia;
   const selectedBg = getPresetBackground(preset);
 
   // Clear any selected background when it can no longer apply (story / media),
@@ -68,7 +74,7 @@ export const FacebookSettings = () => {
         </Select>
       </div>
 
-      {postCurrentType !== 'story' && (
+      {postCurrentType !== 'story' && postCurrentType !== 'reel' && (
         <Input
           label={'Embedded URL (only for text Post)'}
           {...register('url')}

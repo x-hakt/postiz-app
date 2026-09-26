@@ -58,6 +58,14 @@ export class InstagramProvider
     if (firstPost.length > 10) {
       return 'Instagram carousel only supports up to 10 media attachments';
     }
+    if (settings?.post_type === 'reel') {
+      if ((firstPost?.length ?? 0) !== 1) {
+        return 'A Reel is exactly one video';
+      }
+      if ((firstPost[0]?.path?.indexOf?.('mp4') ?? -1) === -1) {
+        return 'A Reel must be a video';
+      }
+    }
     if (this.assetBoolean(settings?.is_trial_reel)) {
       if ((firstPost?.length ?? 0) > 1) {
         return 'Trial Reels can only have one video';
@@ -670,6 +678,14 @@ export class InstagramProvider
     const [accessToken] = token.split('___');
     const [firstPost] = postDetails;
     const isStory = firstPost.settings.post_type === 'story';
+    // x-hakt: explicit Reels (share_to_feed choice) and the AI label
+    const isReel = firstPost.settings.post_type === 'reel';
+    const shareToFeed = isReel
+      ? `&share_to_feed=${
+          this.assetBoolean(firstPost.settings.share_to_feed ?? true) ? 'true' : 'false'
+        }`
+      : ``;
+    const isAiGenerated = this.assetBoolean(firstPost.settings.is_ai_generated);
     const collaborators =
       firstPost?.settings?.collaborators?.length && !isStory
         ? `&collaborators=${encodeURIComponent(
@@ -697,7 +713,7 @@ export class InstagramProvider
               ? `video_url=${m.path}&media_type=STORIES`
               : `video_url=${m.path}&media_type=REELS&thumb_offset=${
                   m?.thumbnailTimestamp || 0
-                }`
+                }${shareToFeed}`
             : isStory
             ? `video_url=${m.path}&media_type=STORIES`
             : `video_url=${m.path}&media_type=VIDEO&thumb_offset=${
@@ -744,9 +760,14 @@ export class InstagramProvider
               )}`
             : ``;
 
+        const aiLabel =
+          isAiGenerated && (isStory || firstPost?.media?.length === 1)
+            ? `&is_ai_generated=true`
+            : ``;
+
         const { id: photoId } = await (
           await this.fetch(
-            `https://${type}/${META_GRAPH_API_VERSION}/${id}/media?${mediaType}${isCarousel}${itemCollaborators}${trialParams}${audioConfiguration}&access_token=${accessToken}${caption}`,
+            `https://${type}/${META_GRAPH_API_VERSION}/${id}/media?${mediaType}${isCarousel}${itemCollaborators}${trialParams}${audioConfiguration}${aiLabel}&access_token=${accessToken}${caption}`,
             {
               method: 'POST',
             }
@@ -776,6 +797,7 @@ export class InstagramProvider
               : 'carousel',
           containers: medias,
           message: firstPost?.message || '',
+          ...(isAiGenerated ? { isAiGenerated: true } : {}),
           ...(collaborators
             ? {
                 collaborators: firstPost.settings.collaborators!.map((p) =>
@@ -797,6 +819,7 @@ export class InstagramProvider
       message?: string;
       carouselId?: string;
       collaborators?: string[];
+      isAiGenerated?: boolean;
     },
     integration: Integration
   ): Promise<PendingCheckResponse> {
@@ -864,6 +887,7 @@ export class InstagramProvider
       message?: string;
       carouselId?: string;
       collaborators?: string[];
+      isAiGenerated?: boolean;
     },
     integration: Integration
   ): Promise<PendingCheckResponse> {
@@ -920,7 +944,7 @@ export class InstagramProvider
             pendingData.message || ''
           )}&media_type=CAROUSEL&children=${encodeURIComponent(
             pendingData.containers.join(',')
-          )}${
+          )}${pendingData.isAiGenerated ? `&is_ai_generated=true` : ``}${
             pendingData.collaborators?.length
               ? `&collaborators=${encodeURIComponent(
                   JSON.stringify(pendingData.collaborators)

@@ -14,10 +14,15 @@ import { InstagramAudioSelector } from '@gitroom/frontend/components/new-launch/
 import { useIntegration } from '@gitroom/frontend/components/launches/helpers/use.integration';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { InstagramPreview } from '@gitroom/frontend/components/new-launch/providers/instagram/instagram.preview';
+// x-hakt: Post, Reel and Story are separate choices (Reel was folded into Post).
 const postType = [
   {
     value: 'post',
-    label: 'Post / Reel',
+    label: 'Post',
+  },
+  {
+    value: 'reel',
+    label: 'Reel',
   },
   {
     value: 'story',
@@ -43,6 +48,7 @@ const InstagramCollaborators: FC<{
   const { integration } = useIntegration();
   const postCurrentType = watch('post_type');
   const isTrialReel = watch('is_trial_reel');
+  const isFeedOrReel = postCurrentType === 'post' || postCurrentType === 'reel';
   // The Audio API is only available with Facebook Login, not Instagram Login
   const supportsAudio = integration?.identifier === 'instagram';
   return (
@@ -70,7 +76,7 @@ const InstagramCollaborators: FC<{
         />
       )}
 
-      {postCurrentType === 'post' && (
+      {isFeedOrReel && (
         <div className="mt-[18px]">
           <InstagramAudioSelector
             label={t(
@@ -83,7 +89,18 @@ const InstagramCollaborators: FC<{
         </div>
       )}
 
-      {postCurrentType === 'post' && (
+      {postCurrentType === 'reel' && (
+        <div className="mt-[18px]">
+          <Checkbox
+            {...register('share_to_feed', {
+              value: true,
+            })}
+            label={t('share_reel_to_feed', 'Also show this Reel in the main feed')}
+          />
+        </div>
+      )}
+
+      {isFeedOrReel && (
         <div className="mt-[18px] flex flex-col gap-[18px]">
           <Checkbox
             {...register('is_trial_reel', {
@@ -108,6 +125,18 @@ const InstagramCollaborators: FC<{
           )}
         </div>
       )}
+
+      <div className="mt-[18px]">
+        <Checkbox
+          {...register('is_ai_generated', {
+            value: false,
+          })}
+          label={t(
+            'label_ai_generated',
+            'Label as AI-generated (Meta "AI info"; can\'t be changed after posting)'
+          )}
+        />
+      </div>
     </>
   );
 };

@@ -56,6 +56,14 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
         return 'Story should have at least one media';
       }
     }
+    if (settings?.post_type === 'reel') {
+      if ((firstPost?.length ?? 0) !== 1) {
+        return 'A Reel is exactly one video';
+      }
+      if ((firstPost[0]?.path?.indexOf?.('mp4') ?? -1) === -1) {
+        return 'A Reel must be a video';
+      }
+    }
     return true;
   }
 
@@ -519,6 +527,50 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
     const [firstPost] = postDetails;
     const isStory = firstPost?.settings?.post_type === 'story';
 
+    // x-hakt: Page Reels (Meta Reels publishing API). Upload here; the publish
+    // ("finish" with the caption) runs once in finalizePost after processing,
+    // through the same arm -> confirm -> publish handshake as stories.
+    if (firstPost?.settings?.post_type === 'reel') {
+      const [media] = firstPost?.media || [];
+      const { video_id, upload_url } = await (
+        await this.fetch(
+          `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${id}/video_reels?upload_phase=start&access_token=${accessToken}`,
+          {
+            method: 'POST',
+          },
+          'start reel upload'
+        )
+      ).json();
+
+      await this.fetch(
+        upload_url,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `OAuth ${accessToken}`,
+            file_url: media.path,
+          },
+        },
+        'upload reel'
+      );
+
+      return [
+        {
+          id: firstPost.id,
+          postId: '',
+          releaseURL: '',
+          status: 'pending',
+          pendingData: {
+            postType: 'reel',
+            items: [{ kind: 'video', mediaId: video_id }],
+            publishedCount: 0,
+            lastPostId: '',
+            message: firstPost.message || '',
+          },
+        },
+      ];
+    }
+
     if (isStory) {
       // Only upload the media here - uploads are invisible until the
       // publish calls, which run one at a time in finalizePost so a failure
@@ -593,8 +645,9 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
   override async checkPostStatus(
     accessToken: string,
     pendingData: {
-      postType: 'story';
+      postType: 'story' | 'reel';
       items: { kind: 'video' | 'photo'; mediaId: string }[];
+      message?: string;
       publishedCount: number;
       lastPostId: string;
       attempting?: number | null;
@@ -641,8 +694,9 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
   override async finalizePost(
     accessToken: string,
     pendingData: {
-      postType: 'story';
+      postType: 'story' | 'reel';
       items: { kind: 'video' | 'photo'; mediaId: string }[];
+      message?: string;
       publishedCount: number;
       lastPostId: string;
       attempting?: number | null;
@@ -666,6 +720,26 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
     }
 
     const item = pendingData.items[pendingData.publishedCount];
+
+    if (pendingData.postType === 'reel') {
+      const reel = await (
+        await this.fetch(
+          `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${integration.internalId}/video_reels?upload_phase=finish&video_id=${item.mediaId}&video_state=PUBLISHED&description=${encodeURIComponent(
+            pendingData.message || ''
+          )}&access_token=${accessToken}`,
+          {
+            method: 'POST',
+          },
+          'publish reel'
+        )
+      ).json();
+
+      return {
+        status: 'completed',
+        postId: reel?.post_id || item.mediaId,
+        releaseURL: `https://www.facebook.com/reel/${item.mediaId}`,
+      };
+    }
 
     const { post_id: storyPostId } = await (
       await this.fetch(
