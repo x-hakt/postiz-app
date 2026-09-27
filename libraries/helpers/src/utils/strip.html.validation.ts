@@ -1,5 +1,6 @@
 import striptags from 'striptags';
 import { parseFragment, serialize } from 'parse5';
+import { sanitizeRichContent } from './sanitize.post.content';
 
 const bold = {
   a: '𝗮',
@@ -132,7 +133,7 @@ const underlineMap = {
 };
 
 export const stripHtmlValidation = (
-  type: 'none' | 'normal' | 'markdown' | 'html',
+  type: 'none' | 'normal' | 'markdown' | 'html' | 'rich',
   val: string,
   replaceBold = false,
   none = false,
@@ -141,6 +142,12 @@ export const stripHtmlValidation = (
 ): string => {
   if (plain) {
     return val;
+  }
+
+  // x-hakt (PLN-25): long-form HTML goes out as sanitised HTML, whole. No tag allowlist of
+  // social formatting and no un-escaping of &lt;/&gt; (which turned text about tags into tags).
+  if (type === 'rich') {
+    return sanitizeRichContent(convertMention(val, convertMentionFunction));
   }
 
   const value = serialize(parseFragment(val));

@@ -67,6 +67,7 @@ import {
   DelayIcon,
 } from '@gitroom/frontend/components/ui/icons';
 import { DelayComponent } from '@gitroom/frontend/components/new-launch/delay.component';
+import { richExtensions, RichToolbar } from '@gitroom/frontend/components/new-launch/rich.extensions';
 
 const MAX_UPLOAD_SIZE = 1024 * 1024 * 1024; // 1 GB
 
@@ -526,7 +527,7 @@ export const EditorWrapper: FC<{
 };
 
 export const Editor: FC<{
-  editorType?: 'none' | 'normal' | 'markdown' | 'html';
+  editorType?: 'none' | 'normal' | 'markdown' | 'html' | 'rich';
   totalPosts: number;
   value: string;
   num?: number;
@@ -790,7 +791,7 @@ export const Editor: FC<{
                           />
                         </>
                       )}
-                      {(editorType === 'markdown' || editorType === 'html') &&
+                      {(editorType === 'markdown' || editorType === 'html' || editorType === 'rich') &&
                         identifier !== 'telegram' && (
                           <>
                             <AComponent
@@ -807,6 +808,9 @@ export const Editor: FC<{
                             />
                           </>
                         )}
+                      {editorType === 'rich' && (
+                        <RichToolbar editor={editorRef?.current?.editor} />
+                      )}
                       <div
                         data-tooltip-id="tooltip"
                         data-tooltip-content={t('insert_emoji', 'Insert Emoji')}
@@ -859,7 +863,7 @@ export const Editor: FC<{
 export const OnlyEditor = forwardRef<
   any,
   {
-    editorType: 'none' | 'normal' | 'markdown' | 'html';
+    editorType: 'none' | 'normal' | 'markdown' | 'html' | 'rich';
     value: string;
     onChange: (value: string) => void;
     paste?: (event: ClipboardEvent | File[]) => void;
@@ -919,7 +923,7 @@ export const OnlyEditor = forwardRef<
         placeholder: t('write_something', 'Write something …'),
         emptyEditorClass: 'is-editor-empty',
       }),
-      ...(editorType === 'html' || editorType === 'markdown'
+      ...(editorType === 'html' || editorType === 'markdown' || editorType === 'rich'
         ? [
             Link.configure({
               openOnClick: false,
@@ -1017,13 +1021,15 @@ export const OnlyEditor = forwardRef<
             }),
           ]
         : []),
-      ...(editorType === 'html' || editorType === 'markdown'
+      ...(editorType === 'html' || editorType === 'markdown' || editorType === 'rich'
         ? [
             Heading.configure({
-              levels: [1, 2, 3],
+              levels: editorType === 'rich' ? [1, 2, 3, 4] : [1, 2, 3],
             }),
           ]
         : []),
+      // x-hakt (PLN-25): long-form extras for WordPress channels only
+      ...(editorType === 'rich' ? richExtensions() : []),
       History.configure({
         depth: 100, // default is 100
         newGroupDelay: 100, // default is 500ms

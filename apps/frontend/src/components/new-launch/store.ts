@@ -26,7 +26,7 @@ export interface SelectedIntegrations {
 }
 
 interface StoreState {
-  editor: undefined | 'none' | 'normal' | 'markdown' | 'html';
+  editor: undefined | 'none' | 'normal' | 'markdown' | 'html' | 'rich';
   loaded: boolean;
   date: dayjs.Dayjs;
   postComment: PostComment;
@@ -128,7 +128,7 @@ interface StoreState {
   setPostComment: (postComment: PostComment) => void;
   setActivateExitButton?: (activateExitButton: boolean) => void;
   setDummy: (dummy: boolean) => void;
-  setEditor: (editor: 'none' | 'normal' | 'markdown' | 'html') => void;
+  setEditor: (editor: 'none' | 'normal' | 'markdown' | 'html' | 'rich') => void;
   setLoaded?: (loaded: boolean) => void;
   setChars: (id: string, chars: number) => void;
   chars: Record<string, number>;
@@ -613,7 +613,7 @@ export const useLaunchStore = create<StoreState>()((set) => ({
     set((state) => ({
       dummy,
     })),
-  setEditor: (editor: 'none' | 'normal' | 'markdown' | 'html') =>
+  setEditor: (editor: 'none' | 'normal' | 'markdown' | 'html' | 'rich') =>
     set((state) => ({
       editor,
     })),

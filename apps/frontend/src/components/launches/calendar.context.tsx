@@ -91,7 +91,7 @@ export interface Integrations {
   id: string;
   disabled?: boolean;
   inBetweenSteps: boolean;
-  editor: 'none' | 'normal' | 'markdown' | 'html';
+  editor: 'none' | 'normal' | 'markdown' | 'html' | 'rich';
   stripLinks?: boolean;
   display: string;
   identifier: string;

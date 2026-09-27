@@ -16,5 +16,7 @@ export default {
     '^@gitroom/backend/(.*)$': '<rootDir>/apps/backend/src/$1',
     '^@gitroom/orchestrator/(.*)$': '<rootDir>/apps/orchestrator/src/$1',
     '^@gitroom/plugins/(.*)$': '<rootDir>/libraries/plugins/src/$1',
+    // x-hakt (PLN-25): see test/isomorphic-dompurify.shim.ts
+    '^isomorphic-dompurify$': '<rootDir>/libraries/nestjs-libraries/test/isomorphic-dompurify.shim.ts',
   },
 };

@@ -22,7 +22,8 @@ export class WordpressProvider
   identifier = 'wordpress';
   name = 'WordPress';
   isBetweenSteps = false;
-  editor = 'html' as const;
+  // x-hakt (PLN-25): long-form, kept as sanitised HTML (images, code, tables, SVG figures, YouTube)
+  editor = 'rich' as const;
   scopes = [] as string[];
   override maxConcurrentJob = 5; // WordPress self-hosted typically has generous limits
   dto = WordpressDto;
@@ -274,6 +275,51 @@ export class WordpressProvider
       id: tag.id,
       name: tag.name,
     }));
+  }
+
+  // x-hakt (PLN-25): ask the site to render a draft exactly as it will publish it, for the
+  // editor's Site preview. The site answers POST /wp-json/wp/v2/preview with { html } (a whole
+  // page); plain WordPress has no such route, so a 404 just means "no site preview here".
+  // Called through /integrations/function, not a Temporal activity, so plain fetch + SSRF guard.
+  async sitePreview(
+    token: string,
+    data: { title?: string; content?: string; type?: string; categories?: number[]; tags?: number[] }
+  ) {
+    const body = JSON.parse(Buffer.from(token, 'base64').toString()) as {
+      domain: string;
+      username: string;
+      password: string;
+    };
+    const domain = body.domain.trim().replace(/\/+$/, '');
+    const auth = Buffer.from(`${body.username}:${body.password}`).toString('base64');
+    try {
+      const response = await fetch(`${domain}/wp-json/wp/v2/preview`, {
+        method: 'POST',
+        headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: data?.title || '',
+          content: data?.content || '',
+          type: data?.type || '',
+          categories: data?.categories || [],
+          tags: data?.tags || [],
+        }),
+        // @ts-ignore - undici-only option; blocks SSRF to internal IPs
+        dispatcher: getSsrfSafeDispatcher(),
+      });
+      if (response.status === 404) {
+        return { available: false };
+      }
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        return { available: true, error: json?.message || `Preview failed (HTTP ${response.status})` };
+      }
+      // Either a whole page (html) or a short-lived preview url on the site itself (for sites
+      // whose pages are rendered by JavaScript).
+      const url = typeof json?.url === 'string' && /^https:\/\//.test(json.url) ? json.url : undefined;
+      return { available: true, html: url ? undefined : String(json?.html || ''), url };
+    } catch (err) {
+      return { available: true, error: 'Could not reach the site for a preview.' };
+    }
   }
 
   async post(

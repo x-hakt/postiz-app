@@ -12,6 +12,7 @@ import { WordpressPostType } from '@gitroom/frontend/components/new-launch/provi
 import { WordpressTerms } from '@gitroom/frontend/components/new-launch/providers/wordpress/wordpress.terms';
 import { MediaComponent } from '@gitroom/frontend/components/media/media.component';
 import { WordpressDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/wordpress.dto';
+import { WordpressPreview } from '@gitroom/frontend/components/new-launch/providers/wordpress/wordpress.preview';
 
 const WordpressSettings: FC = () => {
   const form = useSettings();
@@ -47,7 +48,8 @@ export default withProvider({
   postComment: PostComment.COMMENT,
   minimumCharacters: [],
   SettingsComponent: WordpressSettings,
-  CustomPreviewComponent: undefined, // WordpressPreview,
+  // x-hakt (PLN-25): the site renders its own preview (title, layout, images, diagrams)
+  CustomPreviewComponent: WordpressPreview,
   dto: WordpressDto,
   maximumCharacters: 100000,
 });

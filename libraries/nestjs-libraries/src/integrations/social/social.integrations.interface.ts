@@ -191,7 +191,8 @@ export interface SocialProvider
   isWeb3?: boolean;
   isChromeExtension?: boolean;
   extensionCookies?: { name: string; domain: string }[];
-  editor: 'none' | 'normal' | 'markdown' | 'html';
+  // x-hakt (PLN-25): 'rich' = long-form HTML (WordPress), kept as sanitised HTML end to end
+  editor: 'none' | 'normal' | 'markdown' | 'html' | 'rich';
   customFields?: () => Promise<
     {
       key: string;
