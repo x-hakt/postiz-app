@@ -8,7 +8,7 @@
 // channels never load any of this.
 
 import { FC, useCallback } from 'react';
-import { Node } from '@tiptap/react';
+import { Node, Mark } from '@tiptap/react';
 import Italic from '@tiptap/extension-italic';
 import Code from '@tiptap/extension-code';
 import CodeBlock from '@tiptap/extension-code-block';
@@ -47,6 +47,29 @@ export const HtmlBlock = Node.create({
   },
 });
 
+/** A glossary hover (x-hakt <Term>): <span data-term="ssh" [data-term-def="..."]>SSH</span>.
+ *  Kept as a mark so editing the draft in Postiz never drops it. */
+export const GlossaryTerm = Mark.create({
+  name: 'glossaryTerm',
+  inclusive: false,
+  addAttributes() {
+    return {
+      term: { default: '', parseHTML: (el) => el.getAttribute('data-term') || '', renderHTML: (a) => ({ 'data-term': a.term }) },
+      def: {
+        default: '',
+        parseHTML: (el) => el.getAttribute('data-term-def') || '',
+        renderHTML: (a) => (a.def ? { 'data-term-def': a.def } : {}),
+      },
+    };
+  },
+  parseHTML() {
+    return [{ tag: 'span[data-term]' }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['span', { ...HTMLAttributes, style: 'text-decoration: underline dotted; text-underline-offset: 3px', title: HTMLAttributes['data-term-def'] || `glossary: ${HTMLAttributes['data-term']}` }, 0];
+  },
+});
+
 export const richExtensions = () => [
   Italic,
   Code,
@@ -62,6 +85,7 @@ export const richExtensions = () => [
   TableHeader,
   TableCell,
   HtmlBlock,
+  GlossaryTerm,
 ];
 
 const Btn: FC<{ tip: string; onClick: () => void; children: React.ReactNode }> = ({ tip, onClick, children }) => (
@@ -108,6 +132,19 @@ export const RichToolbar: FC<{ editor: any }> = ({ editor }) => {
         }}
       >
         YT
+      </Btn>
+      <Btn
+        tip="Glossary hover: select a word first (x-hakt: a key from its glossary, or a new key plus a definition)"
+        onClick={() => {
+          const current = editor.getAttributes('glossaryTerm');
+          const term = ask('Glossary key (e.g. ssh, pg-dump). Empty removes it', current?.term || '');
+          if (term === null) return;
+          if (!term.trim()) { editor.chain().focus().unsetMark('glossaryTerm').run(); return; }
+          const def = ask('Definition (only needed for a word the site glossary does not have yet)', current?.def || '') ?? '';
+          editor.chain().focus().setMark('glossaryTerm', { term: term.trim().toLowerCase(), def: def.trim() }).run();
+        }}
+      >
+        TERM
       </Btn>
       <Btn tip="Table (3x3)" onClick={run((c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }))}>TBL</Btn>
       <Btn

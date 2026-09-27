@@ -20,6 +20,12 @@ describe('rich content (x-hakt PLN-25)', () => {
     }
   });
 
+  it('keeps glossary hover spans (data-term / data-term-def)', () => {
+    const out = sanitizeRichContent('<p>Over <span data-term="ssh">SSH</span> and a <span data-term="lifeboat-drill" data-term-def="Restoring a backup to prove it opens.">drill</span>.</p>');
+    expect(out).toContain('<span data-term="ssh">SSH</span>');
+    expect(out).toContain('data-term-def="Restoring a backup to prove it opens."');
+  });
+
   it('strips anything active, and embeds that are not YouTube', () => {
     const out = sanitizeRichContent(
       '<p onclick="x()">a</p><script>alert(1)</script><img src="x" onerror="y()"><a href="javascript:alert(1)">b</a>' +
