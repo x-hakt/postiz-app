@@ -62,15 +62,11 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
   oneTimeToken = true;
 
   isBetweenSteps = false;
-  scopes = [
-    'openid',
-    'profile',
-    'w_member_social',
-    'r_basicprofile',
-    'rw_organization_admin',
-    'w_organization_social',
-    'r_organization_social',
-  ];
+  // x-hakt (PLN-24): a personal profile only needs what LinkedIn's self-serve products grant
+  // ("Sign In with LinkedIn using OpenID Connect" + "Share on LinkedIn"). Asking for more
+  // (r_basicprofile, the organization scopes) makes LinkedIn refuse the whole login. Company pages
+  // (linkedin-page) keep their own, wider list.
+  scopes = ['openid', 'profile', 'w_member_social'];
   override maxConcurrentJob = 2;
   refreshWait = true;
   editor = 'normal' as const;
@@ -174,7 +170,8 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
       expiresIn: expires_in,
       name,
       picture: picture || '',
-      username: vanityName,
+      // x-hakt: /v2/me needs r_basicprofile, which personal apps don't get; fall back to the name
+      username: vanityName || name,
     };
   }
 
@@ -254,7 +251,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
       expiresIn,
       name,
       picture,
-      username: vanityName,
+      username: vanityName || name,
     };
   }
 

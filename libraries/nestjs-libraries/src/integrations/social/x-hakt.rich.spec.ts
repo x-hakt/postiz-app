@@ -100,3 +100,15 @@ describe('rich content (x-hakt PLN-25)', () => {
     }
   });
 });
+
+// The LinkedIn providers import a Prisma type; the class is all this needs.
+jest.mock('@prisma/client', () => ({}));
+
+describe('LinkedIn personal profile (x-hakt PLN-24)', () => {
+  it('asks only for what the self-serve LinkedIn products grant; company pages keep theirs', async () => {
+    const { LinkedinProvider } = await import('./linkedin.provider');
+    const { LinkedinPageProvider } = await import('./linkedin.page.provider');
+    expect(new LinkedinProvider().scopes).toEqual(['openid', 'profile', 'w_member_social']);
+    expect(new LinkedinPageProvider().scopes).toEqual(expect.arrayContaining(['rw_organization_admin', 'w_organization_social']));
+  });
+});
