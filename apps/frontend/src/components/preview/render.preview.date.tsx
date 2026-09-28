@@ -7,5 +7,5 @@ import { isUSCitizen } from '@gitroom/frontend/components/launches/helpers/isusc
 dayjs.extend(utc);
 
 export const RenderPreviewDate: FC<{ date: string }> = ({ date }) => {
-  return <>{dayjs.utc(date).local().format(isUSCitizen() ? 'MMMM D, YYYY h:mm A' : 'D MMMM YYYY, HH:mm')}</>;
+  return <>{dayjs.utc(date).local().format(isUSCitizen() ? 'MMMM D, YYYY h:mm A' : 'D MMMM YYYY, h:mm A')}</>;
 };

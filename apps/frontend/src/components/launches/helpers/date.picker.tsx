@@ -43,7 +43,7 @@ export const DatePicker: FC<{
         <CalendarIcon />
       </div>
       <div className="cursor-pointer">
-        {date.format(isUSCitizen() ? 'MM/DD/YYYY hh:mm A' : 'DD/MM/YYYY HH:mm')}
+        {date.format(isUSCitizen() ? 'MM/DD/YYYY hh:mm A' : 'DD/MM/YYYY h:mm A')}
       </div>
       {open && (
         <div
@@ -72,6 +72,7 @@ export const DatePicker: FC<{
             }}
           />
           <TimeInput
+            format="12"
             onChange={changeDate('time')}
             label="Pick time"
             classNames={{

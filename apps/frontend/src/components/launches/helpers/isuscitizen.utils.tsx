@@ -1,5 +1,5 @@
-// x-hakt: this instance is Australian. US formats (month first, AM/PM) only when chosen in
-// Settings > Date Metrics; a browser left on US English no longer switches them on.
+// x-hakt: this instance is Australian: day-first dates and 12-hour times. US formats (month
+// first) only when chosen in Settings > Date Metrics; a US-English browser no longer switches them on.
 export const isUSCitizen = () => {
   try {
     return localStorage.getItem('isUS') === 'US';

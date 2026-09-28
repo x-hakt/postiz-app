@@ -110,7 +110,7 @@ export const TimeTable: FC<{
           .startOf('day')
           .add(time, 'minutes')
           .local()
-          .format('HH:mm'),
+          .format('h:mm A'),
       })),
       (p) => p.value
     );

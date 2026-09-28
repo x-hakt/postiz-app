@@ -5,8 +5,9 @@ import React, { useState } from 'react';
 import { isUSCitizen } from '@gitroom/frontend/components/launches/helpers/isuscitizen.utils';
 import timezones from 'timezones-list';
 const dateMetrics = [
-  { label: 'AM:PM', value: 'US' },
-  { label: '24 hours', value: 'GLOBAL' },
+  // x-hakt: both are 12-hour; the choice is the date order. Australian is the default.
+  { label: 'Australian (DD/MM, 12-hour)', value: 'GLOBAL' },
+  { label: 'US (MM/DD, 12-hour)', value: 'US' },
 ];
 
 import dayjs from 'dayjs';
