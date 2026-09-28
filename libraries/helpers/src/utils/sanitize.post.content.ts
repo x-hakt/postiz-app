@@ -54,7 +54,11 @@ export const sanitizeRichContent = (value: unknown): string => {
     ADD_TAGS: RICH_TAGS,
     ADD_ATTR: RICH_ATTR,
     FORBID_TAGS: ['script', 'style', 'form', 'input', 'button', 'textarea', 'select', 'option', 'object', 'embed', 'link', 'meta', 'base', 'foreignObject'],
-    ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|\/|#)/i,
+    // DOMPurify checks every attribute it doesn't know to be URI-safe against this pattern, so
+    // it must let plain values through (x="30", viewBox, points, font-size) while refusing any
+    // scheme except http(s)/mailto/tel. A pattern that only allowed "https:" etc. at the start
+    // stripped every SVG coordinate (PLN-23).
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
   });
 };
 

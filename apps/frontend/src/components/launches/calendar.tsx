@@ -16,6 +16,7 @@ import {
 } from '@gitroom/frontend/components/launches/calendar.context';
 import dayjs from 'dayjs';
 import 'dayjs/locale/en';
+import 'dayjs/locale/en-au';
 import 'dayjs/locale/he';
 import 'dayjs/locale/ru';
 import 'dayjs/locale/zh';
@@ -44,7 +45,7 @@ import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import { groupBy, random, sortBy } from 'lodash';
 import SafeImage from '@gitroom/react/helpers/safe.image';
 import { extend } from 'dayjs';
-import { isUSCitizen } from './helpers/isuscitizen.utils';
+import { dayjsLocale, isUSCitizen } from './helpers/isuscitizen.utils';
 import { useInterval } from '@mantine/hooks';
 import { StatisticsModal } from '@gitroom/frontend/components/launches/statistics';
 import { MissingReleaseModal } from '@gitroom/frontend/components/launches/missing-release.modal';
@@ -67,7 +68,7 @@ extend(localizedFormat);
 // Initialize language
 const updateDayjsLocale = () => {
   const currentLanguage = i18next.resolvedLanguage || 'en';
-  dayjs.locale(currentLanguage);
+  dayjs.locale(dayjsLocale(currentLanguage));
 };
 
 // Set dayjs locale whenever i18next language changes
@@ -261,7 +262,7 @@ export const DayView = () => {
 
   // Set dayjs locale based on current language
   const currentLanguage = i18next.resolvedLanguage || 'en';
-  dayjs.locale(currentLanguage);
+  dayjs.locale(dayjsLocale(currentLanguage));
 
   const currentDay = dayjs.utc(startDate);
 
@@ -343,7 +344,7 @@ export const WeekView = () => {
   // Use dayjs to get localized day names
   const localizedDays = useMemo(() => {
     const currentLanguage = i18next.resolvedLanguage || 'en';
-    dayjs.locale(currentLanguage);
+    dayjs.locale(dayjsLocale(currentLanguage));
 
     const days = [];
     const weekStart = newDayjs(startDate);
@@ -415,7 +416,7 @@ export const MonthView = () => {
   // Use dayjs to get localized day names
   const localizedDays = useMemo(() => {
     const currentLanguage = i18next.resolvedLanguage || 'en';
-    dayjs.locale(currentLanguage);
+    dayjs.locale(dayjsLocale(currentLanguage));
 
     const days = [];
     // Starting from Monday (1) to Sunday (7)

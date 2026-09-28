@@ -1,4 +1,12 @@
+// x-hakt: this instance is Australian. US formats (month first, AM/PM) only when chosen in
+// Settings > Date Metrics; a browser left on US English no longer switches them on.
 export const isUSCitizen = () => {
-  const userLanguage = localStorage.getItem('isUS') || ((navigator.language || navigator.languages[0]).startsWith('en-US') ? 'US' : 'GLOBAL');
-  return userLanguage === 'US';
+  try {
+    return localStorage.getItem('isUS') === 'US';
+  } catch {
+    return false;
+  }
 };
+
+// dayjs locale for the UI language: English dates read Australian (DD/MM/YYYY, weeks from Monday).
+export const dayjsLocale = (language: string) => (language === 'en' && !isUSCitizen() ? 'en-au' : language);

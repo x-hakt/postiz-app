@@ -151,8 +151,15 @@ export default async function Auth(
                       )}
                     </div>
                     <div className="flex flex-col gap-[20px]">
+                      {/* x-hakt: long-form (WordPress) posts are article HTML: headings, figures with
+                          SVG diagrams, lists, code. pre-wrap would turn the markup's own line breaks
+                          into gaps, so articles get article styling instead. */}
                       <div
-                        className="text-sm whitespace-pre-wrap"
+                        className={
+                          /<(h[1-6]|figure|table|pre|blockquote)[\s>]/i.test(p.content || '')
+                            ? 'text-[15px] leading-[1.65] max-w-[760px] [&_h1]:text-[26px] [&_h2]:text-[21px] [&_h3]:text-[17px] [&_h1]:font-[700] [&_h2]:font-[700] [&_h3]:font-[600] [&_h1,&_h2,&_h3]:mt-[1.4em] [&_h1,&_h2,&_h3]:mb-[.5em] [&_p]:my-[.8em] [&_ul]:list-disc [&_ol]:list-decimal [&_ul,&_ol]:ps-[1.4em] [&_ul,&_ol]:my-[.8em] [&_figure]:my-[1.4em] [&_figure_svg]:w-full [&_figure_svg]:h-auto [&_figure_svg]:rounded-[8px] [&_figure_svg]:bg-[#0b0c0e] [&_figcaption]:text-[13px] [&_figcaption]:opacity-70 [&_figcaption]:mt-[.5em] [&_code]:font-mono [&_code]:text-[13px] [&_pre]:overflow-auto [&_pre]:p-[12px] [&_pre]:rounded-[8px] [&_pre]:bg-black/40 [&_blockquote]:border-s-[3px] [&_blockquote]:ps-[12px] [&_blockquote]:opacity-90 [&_img]:max-w-full [&_img]:rounded-[8px] [&_a]:underline [&_[data-term]]:underline [&_[data-term]]:decoration-dotted'
+                            : 'text-sm whitespace-pre-wrap'
+                        }
                         dangerouslySetInnerHTML={{
                           __html: sanitizePostContent(p.content),
                         }}

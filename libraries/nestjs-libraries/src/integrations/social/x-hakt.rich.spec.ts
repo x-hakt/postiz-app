@@ -20,6 +20,25 @@ describe('rich content (x-hakt PLN-25)', () => {
     }
   });
 
+  it('keeps every SVG attribute a diagram needs, not just the tags', () => {
+    const figure =
+      '<figure><svg viewBox="0 0 380 170" role="img" aria-label="chart"><g font-family="\'IBM Plex Mono\', monospace" font-size="7" fill="#87898d"><text x="30" y="24" text-anchor="end">100%</text></g>' +
+      '<polyline points="40,81 60,81" fill="none" stroke="#26cb96" stroke-width="1.8"></polyline><rect x="10" y="20" width="84" height="40" rx="6" stroke-opacity="0.55"></rect>' +
+      '<line x1="36" y1="50" x2="370" y2="50" stroke-dasharray="4 3"></line><path d="M94 40 H 116"></path></svg></figure>';
+    const out = sanitizePostContent(figure);
+    for (const attr of ['viewBox="0 0 380 170"', 'x="30"', 'y="24"', 'text-anchor="end"', 'font-size="7"', 'points="40,81 60,81"', 'stroke-width="1.8"', 'rx="6"', 'stroke-opacity="0.55"', 'x1="36"', 'stroke-dasharray="4 3"', 'd="M94 40 H 116"', 'aria-label="chart"']) {
+      expect(out).toContain(attr);
+    }
+  });
+
+  it('still refuses script URLs in links', () => {
+    const out = sanitizePostContent('<a href="javascript:alert(1)">x</a><a href="vbscript:msgbox(1)">v</a><a href="https://ok.example/">ok</a><a href="tel:+61400000000">call</a>');
+    expect(out).not.toContain('javascript:');
+    expect(out).not.toContain('vbscript:');
+    expect(out).toContain('href="https://ok.example/"');
+    expect(out).toContain('href="tel:+61400000000"');
+  });
+
   it('keeps glossary hover spans (data-term / data-term-def)', () => {
     const out = sanitizeRichContent('<p>Over <span data-term="ssh">SSH</span> and a <span data-term="lifeboat-drill" data-term-def="Restoring a backup to prove it opens.">drill</span>.</p>');
     expect(out).toContain('<span data-term="ssh">SSH</span>');
