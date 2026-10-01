@@ -342,10 +342,9 @@ export class WordpressProvider
     for (const src of sources.slice(0, 30)) {
       try {
         const url = src.replace(/&amp;/g, '&');
-        const image = await fetch(url, {
-          // @ts-ignore - undici-only option; blocks SSRF to internal IPs (Postiz's own uploads too)
-          ...(url.startsWith(own) ? {} : { dispatcher: getSsrfSafeDispatcher() }),
-        });
+        // undici-only option; blocks SSRF to internal IPs for images from other websites
+        const options: any = url.startsWith(own) ? {} : { dispatcher: getSsrfSafeDispatcher() };
+        const image = await fetch(url, options);
         const type = (image.headers.get('content-type') || '').split(';')[0];
         if (!image.ok || !type.startsWith('image/')) {
           throw new Error(`HTTP ${image.status} ${type}`);
