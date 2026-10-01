@@ -322,6 +322,55 @@ export class WordpressProvider
     }
   }
 
+  // x-hakt: images in a rich article (pasted or uploaded in the editor, so they live in Postiz's
+  // media library, or pasted from another website) are copied onto the site through its media
+  // endpoint, as the featured image is, and the article points at the site's copy: nothing is
+  // hotlinked. Images already on the site (same domain or a subdomain of it) are left alone. An
+  // image that can't be copied keeps its original address rather than failing the post.
+  private async imagesToSite(content: string, domain: string, auth: string) {
+    const siteHost = new URL(domain).hostname.replace(/^www\./, '');
+    const own = `${process.env.FRONTEND_URL}/uploads/`;
+    const sources = [
+      ...new Set(
+        [...content.matchAll(/<img\b[^>]*?\bsrc="(https:\/\/[^"]+)"/gi)].map((m) => m[1])
+      ),
+    ].filter((src) => {
+      const host = new URL(src.replace(/&amp;/g, '&')).hostname;
+      return host !== siteHost && !host.endsWith(`.${siteHost}`);
+    });
+    let out = content;
+    for (const src of sources.slice(0, 30)) {
+      try {
+        const url = src.replace(/&amp;/g, '&');
+        const image = await fetch(url, {
+          // @ts-ignore - undici-only option; blocks SSRF to internal IPs (Postiz's own uploads too)
+          ...(url.startsWith(own) ? {} : { dispatcher: getSsrfSafeDispatcher() }),
+        });
+        const type = (image.headers.get('content-type') || '').split(';')[0];
+        if (!image.ok || !type.startsWith('image/')) {
+          throw new Error(`HTTP ${image.status} ${type}`);
+        }
+        const media = await (
+          await fetch(`${domain}/wp-json/wp/v2/media`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Basic ${auth}`,
+              'Content-Disposition': `attachment; filename="${(url.split('/').pop() || 'image').split('?')[0].replace(/[^\w.-]+/g, '-')}"`,
+              'Content-Type': type,
+            },
+            body: Buffer.from(await image.arrayBuffer()),
+          })
+        ).json();
+        if (typeof media?.source_url === 'string') {
+          out = out.split(`src="${src}"`).join(`src="${media.source_url}"`);
+        }
+      } catch (err) {
+        console.log('WordPress: kept an article image at its original address', src, String(err));
+      }
+    }
+    return out;
+  }
+
   async post(
     id: string,
     accessToken: string,
@@ -366,6 +415,12 @@ export class WordpressProvider
       mediaId = mediaResponse.id;
     }
 
+    const content = await this.imagesToSite(
+      postDetails?.[0]?.message || '',
+      body.domain,
+      auth
+    );
+
     const categories = (postDetails?.[0]?.settings?.categories || [])
       .map((category) => Number(category))
       .filter((category) => !isNaN(category));
@@ -384,7 +439,7 @@ export class WordpressProvider
           method: 'POST',
           body: JSON.stringify({
             title: postDetails?.[0]?.settings?.title,
-            content: postDetails?.[0]?.message,
+            content,
             slug: slugify(postDetails?.[0]?.settings?.title, {
               lower: true,
               strict: true,

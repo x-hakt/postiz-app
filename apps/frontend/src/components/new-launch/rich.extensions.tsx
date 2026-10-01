@@ -7,7 +7,7 @@
 // figures with inline SVG diagrams (or any other embed) verbatim and renders them live. Social
 // channels never load any of this.
 
-import { FC, useCallback } from 'react';
+import { FC, useCallback, useRef } from 'react';
 import { Node, Mark } from '@tiptap/react';
 import Italic from '@tiptap/extension-italic';
 import Code from '@tiptap/extension-code';
@@ -100,8 +100,12 @@ const Btn: FC<{ tip: string; onClick: () => void; children: React.ReactNode }> =
 );
 
 /** Extra toolbar buttons for rich mode. Prompts keep it simple and dependency-free. */
-export const RichToolbar: FC<{ editor: any }> = ({ editor }) => {
+export const RichToolbar: FC<{ editor: any; onPickImages?: (files: File[]) => boolean }> = ({
+  editor,
+  onPickImages,
+}) => {
   const run = useCallback((fn: (chain: any) => any) => () => editor && fn(editor.chain().focus()).run(), [editor]);
+  const picker = useRef<HTMLInputElement>(null);
   const ask = (label: string, initial = '') => (typeof window === 'undefined' ? null : window.prompt(label, initial));
   if (!editor) return null;
   return (
@@ -113,6 +117,24 @@ export const RichToolbar: FC<{ editor: any }> = ({ editor }) => {
       <Btn tip="Inline code" onClick={run((c) => c.toggleCode())}>{'<>'}</Btn>
       <Btn tip="Code block" onClick={run((c) => c.toggleCodeBlock())}>{'{ }'}</Btn>
       <Btn tip="Divider" onClick={run((c) => c.setHorizontalRule())}>&mdash;</Btn>
+      {onPickImages && (
+        <>
+          <Btn tip="Upload an image into the article (or paste / drop one)" onClick={() => picker.current?.click()}>
+            + IMG
+          </Btn>
+          <input
+            ref={picker}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(event) => {
+              onPickImages(Array.from(event.target.files || []));
+              event.target.value = '';
+            }}
+          />
+        </>
+      )}
       <Btn
         tip="Image (URL)"
         onClick={() => {

@@ -99,6 +99,44 @@ describe('rich content (x-hakt PLN-25)', () => {
       (global as any).fetch = realFetch;
     }
   });
+
+  it('copies article images onto the site and points the article at the copies', async () => {
+    const wp: any = new WordpressProvider();
+    const realFetch = global.fetch;
+    const realFrontend = process.env.FRONTEND_URL;
+    process.env.FRONTEND_URL = 'https://planner.example';
+    const uploads: any[] = [];
+    try {
+      (global as any).fetch = jest.fn(async (url: string, init: any) => {
+        if (url === 'https://site.example/wp-json/wp/v2/media') {
+          uploads.push(init);
+          return { ok: true, status: 201, json: async () => ({ source_url: `https://api.site.example/uploads/copy-${uploads.length}.webp` }) };
+        }
+        if (url.includes('broken')) return { ok: false, status: 404, headers: new Map([['content-type', 'text/html']]) };
+        return { ok: true, status: 200, headers: new Map([['content-type', 'image/png']]), arrayBuffer: async () => new ArrayBuffer(4) };
+      });
+      const html =
+        '<p>a</p><img src="https://planner.example/uploads/2026/10/01/pasted.png" alt="">' +
+        '<img src="https://other.example/pic.png?w=1&amp;h=2" alt="b">' +
+        '<img src="https://api.site.example/uploads/already.webp" alt="c">' +
+        '<img src="https://site.example/own.png" alt="d">' +
+        '<img src="https://other.example/broken.png" alt="e">' +
+        '<img src="https://planner.example/uploads/2026/10/01/pasted.png" alt="again">';
+      const out = await wp.imagesToSite(html, 'https://site.example', 'auth');
+      expect(uploads).toHaveLength(2);
+      expect(uploads[0].headers.Authorization).toBe('Basic auth');
+      expect(uploads[0].headers['Content-Type']).toBe('image/png');
+      expect(out.match(/copy-1\.webp/g)).toHaveLength(2);
+      expect(out).toContain('src="https://api.site.example/uploads/copy-2.webp" alt="b"');
+      expect(out).toContain('src="https://api.site.example/uploads/already.webp"');
+      expect(out).toContain('src="https://site.example/own.png"');
+      expect(out).toContain('src="https://other.example/broken.png"');
+      expect(out).not.toContain('planner.example');
+    } finally {
+      (global as any).fetch = realFetch;
+      process.env.FRONTEND_URL = realFrontend;
+    }
+  });
 });
 
 // The LinkedIn providers import a Prisma type; the class is all this needs.

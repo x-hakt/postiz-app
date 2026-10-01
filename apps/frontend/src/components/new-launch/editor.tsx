@@ -576,6 +576,39 @@ export const Editor: FC<{
     onEnd: () => setLoading(false),
   });
 
+  // x-hakt: in a rich (site article) editor, images that are pasted, dropped or picked go into the
+  // article itself at the cursor, uploaded to the media library first. The WordPress provider copies
+  // them onto the site when it publishes. Every other editor keeps attaching files as post media.
+  const inlineUppy = useUppyUploader({
+    onUploadSuccess: (result: any[]) => {
+      const editor = editorRef?.current?.editor;
+      for (const media of result || []) {
+        if (media?.path) {
+          editor?.chain().focus().setImage({ src: media.path, alt: '' }).run();
+        }
+      }
+      inlineUppy.clear();
+    },
+    allowedFileTypes: 'image/*',
+    onStart: () => {},
+    onEnd: () => setLoading(false),
+  });
+
+  const addInlineImages = useCallback(
+    (files: File[]) => {
+      const images = files.filter((file) => file.type.startsWith('image/'));
+      if (editorType !== 'rich' || !images.length) {
+        return false;
+      }
+      setLoading(true);
+      for (const file of images) {
+        inlineUppy.addFile(file);
+      }
+      return true;
+    },
+    [editorType, inlineUppy]
+  );
+
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
       const totalSize = acceptedFiles.reduce((acc, file) => acc + file.size, 0);
@@ -591,13 +624,17 @@ export const Editor: FC<{
         return;
       }
 
+      if (addInlineImages(acceptedFiles)) {
+        return;
+      }
+
       setLoading(true);
 
       for (const file of acceptedFiles) {
         uppy.addFile(file);
       }
     },
-    [uppy, toaster, t]
+    [uppy, toaster, t, addInlineImages]
   );
 
   const paste = useCallback(
@@ -635,6 +672,10 @@ export const Editor: FC<{
         return;
       }
 
+      if (addInlineImages(files)) {
+        return;
+      }
+
       if (files.length > 0) {
         setLoading(true);
       }
@@ -643,7 +684,7 @@ export const Editor: FC<{
         uppy.addFile(file);
       }
     },
-    [uppy, num, comments, toaster, t]
+    [uppy, num, comments, toaster, t, addInlineImages]
   );
 
   const { getRootProps, isDragActive } = useDropzone({
@@ -809,7 +850,10 @@ export const Editor: FC<{
                           </>
                         )}
                       {editorType === 'rich' && (
-                        <RichToolbar editor={editorRef?.current?.editor} />
+                        <RichToolbar
+                          editor={editorRef?.current?.editor}
+                          onPickImages={addInlineImages}
+                        />
                       )}
                       <div
                         data-tooltip-id="tooltip"
@@ -1040,6 +1084,27 @@ export const OnlyEditor = forwardRef<
     immediatelyRender: false,
     // @ts-ignore
     onPaste: paste,
+    // x-hakt: in rich mode the editor's own image paste/drop would insert an embedded (data:) copy
+    // that saving strips, leaving a broken image. Hand pasted images to the uploader instead; dropped
+    // ones reach it through the dropzone around the editor.
+    ...(editorType === 'rich'
+      ? {
+          editorProps: {
+            handlePaste: (_view: any, event: ClipboardEvent) => {
+              const files = Array.from(event.clipboardData?.files || []);
+              if (!files.some((file) => file.type.startsWith('image/'))) {
+                return false;
+              }
+              paste?.(event);
+              return true;
+            },
+            handleDrop: (_view: any, event: DragEvent) =>
+              Array.from(event.dataTransfer?.files || []).some((file) =>
+                file.type.startsWith('image/')
+              ),
+          },
+        }
+      : {}),
     onUpdate: (innerProps) => {
       onChange?.(innerProps.editor.getHTML());
     },
