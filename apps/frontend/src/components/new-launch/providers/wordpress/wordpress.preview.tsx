@@ -23,6 +23,7 @@ export const WordpressPreview: FC<{ maximumCharacters?: number }> = () => {
   const type: string = form?.watch?.('type') || '';
   const categories: number[] = form?.watch?.('categories') || [];
   const tags: number[] = form?.watch?.('tags') || [];
+  const rating: string = form?.watch?.('rating') || '';
   const content = (value || []).map((p) => p.content).join('');
   const [result, setResult] = useState<Result | null>(null);
   const [loading, setLoading] = useState(false);
@@ -33,7 +34,7 @@ export const WordpressPreview: FC<{ maximumCharacters?: number }> = () => {
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        const r: Result = await customFunc.get('sitePreview', { title, content, type, categories, tags });
+        const r: Result = await customFunc.get('sitePreview', { title, content, type, categories, tags, rating });
         if (mine === seq.current) setResult(r || { available: false });
       } catch {
         if (mine === seq.current) setResult({ available: true, error: 'Preview failed.' });
@@ -42,7 +43,7 @@ export const WordpressPreview: FC<{ maximumCharacters?: number }> = () => {
       }
     }, 900);
     return () => clearTimeout(timer);
-  }, [title, content, type, JSON.stringify(categories), JSON.stringify(tags)]);
+  }, [title, content, type, rating, JSON.stringify(categories), JSON.stringify(tags)]);
 
   return (
     <div className="flex flex-col gap-[8px] w-full">

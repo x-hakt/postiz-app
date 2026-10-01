@@ -11,7 +11,10 @@ import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.v
 import { WordpressPostType } from '@gitroom/frontend/components/new-launch/providers/wordpress/wordpress.post.type';
 import { WordpressTerms } from '@gitroom/frontend/components/new-launch/providers/wordpress/wordpress.terms';
 import { MediaComponent } from '@gitroom/frontend/components/media/media.component';
-import { WordpressDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/wordpress.dto';
+import {
+  WordpressDto,
+  WORDPRESS_RATINGS,
+} from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/wordpress.dto';
 import { WordpressPreview } from '@gitroom/frontend/components/new-launch/providers/wordpress/wordpress.preview';
 
 const WordpressSettings: FC = () => {
@@ -36,6 +39,17 @@ const WordpressSettings: FC = () => {
         func="tagsList"
         {...form.register('tags')}
       />
+      {/* x-hakt: reviews carry a star rating, sent to the site as meta.rating */}
+      {form.watch('type') === 'review' && (
+        <Select label="Star rating" {...form.register('rating', { value: '' })}>
+          <option value="">No rating</option>
+          {WORDPRESS_RATINGS.map((rating) => (
+            <option key={rating} value={rating}>
+              {rating} {rating === '1' ? 'star' : 'stars'}
+            </option>
+          ))}
+        </Select>
+      )}
       <MediaComponent
         label="Cover picture"
         description="Add a cover picture"

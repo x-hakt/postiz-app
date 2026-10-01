@@ -283,7 +283,7 @@ export class WordpressProvider
   // Called through /integrations/function, not a Temporal activity, so plain fetch + SSRF guard.
   async sitePreview(
     token: string,
-    data: { title?: string; content?: string; type?: string; categories?: number[]; tags?: number[] }
+    data: { title?: string; content?: string; type?: string; categories?: number[]; tags?: number[]; rating?: string }
   ) {
     const body = JSON.parse(Buffer.from(token, 'base64').toString()) as {
       domain: string;
@@ -302,6 +302,7 @@ export class WordpressProvider
           type: data?.type || '',
           categories: data?.categories || [],
           tags: data?.tags || [],
+          ...(data?.rating ? { meta: { rating: Number(data.rating) } } : {}),
         }),
         // @ts-ignore - undici-only option; blocks SSRF to internal IPs
         dispatcher: getSsrfSafeDispatcher(),
@@ -448,6 +449,10 @@ export class WordpressProvider
             ...(categories.length ? { categories } : {}),
             ...(tags.length ? { tags } : {}),
             ...(mediaId ? { featured_media: mediaId } : {}),
+            // x-hakt: a review's star rating, as WordPress meta (sites without it ignore it)
+            ...(postDetails?.[0]?.settings?.rating
+              ? { meta: { rating: Number(postDetails[0].settings.rating) } }
+              : {}),
           }),
         }
       )

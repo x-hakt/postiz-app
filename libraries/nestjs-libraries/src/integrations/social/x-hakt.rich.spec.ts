@@ -100,6 +100,30 @@ describe('rich content (x-hakt PLN-25)', () => {
     }
   });
 
+  it("sends a review's star rating to the site as meta.rating, in previews and when publishing", async () => {
+    const wp: any = new WordpressProvider();
+    const token = Buffer.from(JSON.stringify({ domain: 'https://site.example', username: 'planner', password: 'pw' })).toString('base64');
+    const realFetch = global.fetch;
+    const bodies: any[] = [];
+    try {
+      (global as any).fetch = jest.fn(async (_url: string, init: any) => {
+        bodies.push(JSON.parse(init.body));
+        return { status: 200, ok: true, json: async () => ({ id: 7, link: 'https://site.example/news/x', html: '<html></html>' }) };
+      });
+      await wp.sitePreview(token, { title: 'T', content: '<p>x</p>', type: 'review', rating: '3.5' });
+      await wp.sitePreview(token, { title: 'T', content: '<p>x</p>', type: 'article' });
+      wp.fetch = (global as any).fetch;
+      await wp.post('id', token, [{ id: 'p', message: '<p>body</p>', settings: { title: 'Golden Axe', type: 'review', rating: '3.5' } }], {});
+      await wp.post('id', token, [{ id: 'p', message: '<p>body</p>', settings: { title: 'News item', type: 'article' } }], {});
+      expect(bodies[0].meta).toEqual({ rating: 3.5 });
+      expect(bodies[1].meta).toBeUndefined();
+      expect(bodies[2].meta).toEqual({ rating: 3.5 });
+      expect(bodies[3].meta).toBeUndefined();
+    } finally {
+      (global as any).fetch = realFetch;
+    }
+  });
+
   it('copies article images onto the site and points the article at the copies', async () => {
     const wp: any = new WordpressProvider();
     const realFetch = global.fetch;
