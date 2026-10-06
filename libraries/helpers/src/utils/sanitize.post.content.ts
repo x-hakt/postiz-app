@@ -48,7 +48,7 @@ export const sanitizeRichContent = (value: unknown): string => {
     return '';
   }
   hookOnce();
-  return DOMPurify.sanitize(value, {
+  const out = DOMPurify.sanitize(value, {
     // html + svg profiles (svg keeps diagrams: shapes, text, gradients, markers)
     USE_PROFILES: { html: true, svg: true, svgFilters: true },
     ADD_TAGS: RICH_TAGS,
@@ -60,6 +60,8 @@ export const sanitizeRichContent = (value: unknown): string => {
     // stripped every SVG coordinate (PLN-23).
     ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
   });
+  // x-hakt: an image figure saved with no caption carries an empty <figcaption>; don't publish it.
+  return out.replace(/<figcaption>(\s|<br\s*\/?>)*<\/figcaption>/gi, '');
 };
 
 export const sanitizePostContent = (value: unknown): string => sanitizeRichContent(value);

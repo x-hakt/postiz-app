@@ -31,6 +31,19 @@ describe('rich content (x-hakt PLN-25)', () => {
     }
   });
 
+  it('drops an empty caption from an image figure, keeps a real one and the credits mailto link', () => {
+    const out = sanitizeRichContent(
+      '<figure><img src="https://x.example/a.webp" alt="A"><figcaption></figcaption></figure>' +
+        '<figure><img src="https://x.example/b.webp" alt="B"><figcaption><br></figcaption></figure>' +
+        '<figure><img src="https://x.example/c.webp" alt="C"><figcaption>GargantuLAN, Newcastle NSW, circa 1998.</figcaption></figure>' +
+        '<div data-html-block=""><p><small style="font-size:0.75rem">Email <a href="mailto:contact@playtopia.com.au">contact@playtopia.com.au</a></small></p></div>'
+    );
+    expect(out).toContain('<figure><img src="https://x.example/a.webp" alt="A"></figure>');
+    expect(out).toContain('<figure><img src="https://x.example/b.webp" alt="B"></figure>');
+    expect(out).toContain('<figcaption>GargantuLAN, Newcastle NSW, circa 1998.</figcaption>');
+    expect(out).toContain('href="mailto:contact@playtopia.com.au"');
+  });
+
   it('still refuses script URLs in links', () => {
     const out = sanitizePostContent('<a href="javascript:alert(1)">x</a><a href="vbscript:msgbox(1)">v</a><a href="https://ok.example/">ok</a><a href="tel:+61400000000">call</a>');
     expect(out).not.toContain('javascript:');

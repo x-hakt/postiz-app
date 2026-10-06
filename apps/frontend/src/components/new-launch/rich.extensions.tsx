@@ -47,6 +47,98 @@ export const HtmlBlock = Node.create({
   },
 });
 
+// x-hakt (2026-10-06): image captions and the credits small print, editable as text in rich mode.
+// The operator couldn't caption an image or change an article's photo credits: an image <figure>
+// and the credits block (<div data-html-block><p><small>...</small></p></div>) both parsed as an
+// HtmlBlock, editable only through a prompt holding the raw markup. Now an image figure is the
+// picture with an ordinary editable caption under it, and the credits line is ordinary text. Both
+// save back to exactly the markup the sites already render. Figures holding anything else (SVG
+// diagrams, embeds) and any other HTML block stay HtmlBlocks.
+
+/** The small-print style the planner's articles use for photo credits and notices. */
+export const SMALL_PRINT_STYLE = 'font-size:0.75rem;line-height:1.5;opacity:0.75';
+
+/** A <figure> that is one image plus, at most, a caption. */
+export const isImageFigure = (figure: Element) => {
+  const kids = Array.from(figure.children);
+  return kids.filter((k) => k.tagName === 'IMG').length === 1 && kids.every((k) => k.tagName === 'IMG' || k.tagName === 'FIGCAPTION');
+};
+
+/** <figure><img src alt><figcaption>editable caption</figcaption></figure> */
+export const ImageFigure = Node.create({
+  name: 'imageFigure',
+  group: 'block',
+  content: 'inline*',
+  draggable: true,
+  isolating: true,
+  defining: true,
+  addAttributes() {
+    return { src: { default: '' }, alt: { default: '' } };
+  },
+  parseHTML() {
+    return [
+      {
+        tag: 'figure',
+        priority: 65, // ahead of HtmlBlock's figure rule (60)
+        getAttrs: (el) => {
+          const figure = el as HTMLElement;
+          if (!isImageFigure(figure)) return false;
+          const img = figure.querySelector('img') as HTMLImageElement;
+          return { src: img.getAttribute('src') || '', alt: img.getAttribute('alt') || '' };
+        },
+        contentElement: (dom: HTMLElement) => dom.querySelector('figcaption') || dom.ownerDocument.createElement('figcaption'),
+      },
+      {
+        // An image figure the planner wrapped in an HTML block: unwrap it so it can be captioned too.
+        tag: 'div[data-html-block]',
+        priority: 76, // ahead of SmallPrint (75) and HtmlBlock (70)
+        getAttrs: (el) => {
+          const div = el as HTMLElement;
+          const only = div.children.length === 1 && div.children[0].tagName === 'FIGURE' ? div.children[0] : null;
+          if (!only || !isImageFigure(only) || div.textContent?.trim() !== only.textContent?.trim()) return false;
+          const img = only.querySelector('img') as HTMLImageElement;
+          return { src: img.getAttribute('src') || '', alt: img.getAttribute('alt') || '' };
+        },
+        contentElement: (dom: HTMLElement) => dom.querySelector('figcaption') || dom.ownerDocument.createElement('figcaption'),
+      },
+    ];
+  },
+  renderHTML({ node }) {
+    return ['figure', ['img', { src: node.attrs.src, alt: node.attrs.alt }], ['figcaption', 0]];
+  },
+});
+
+/** <div data-html-block><p><small style>editable text</small></p></div>: photo credits, notices. */
+export const SmallPrint = Node.create({
+  name: 'smallPrint',
+  group: 'block',
+  content: 'inline*',
+  defining: true,
+  addAttributes() {
+    return { style: { default: SMALL_PRINT_STYLE } };
+  },
+  parseHTML() {
+    return [
+      {
+        tag: 'div[data-html-block]',
+        priority: 75, // ahead of HtmlBlock's (70); anything that isn't one <p><small> falls through to it
+        getAttrs: (el) => {
+          const div = el as HTMLElement;
+          const p = div.children.length === 1 ? div.children[0] : null;
+          if (!p || p.tagName !== 'P' || p.children.length !== 1 || p.childNodes.length !== 1) return false;
+          const small = p.children[0];
+          if (small.tagName !== 'SMALL') return false;
+          return { style: small.getAttribute('style') || SMALL_PRINT_STYLE };
+        },
+        contentElement: (dom: HTMLElement) => dom.querySelector('small') as HTMLElement,
+      },
+    ];
+  },
+  renderHTML({ node }) {
+    return ['div', { 'data-html-block': '' }, ['p', ['small', { style: node.attrs.style }, 0]]];
+  },
+});
+
 /** A glossary hover (x-hakt <Term>): <span data-term="ssh" [data-term-def="..."]>SSH</span>.
  *  Kept as a mark so editing the draft in Postiz never drops it. */
 export const GlossaryTerm = Mark.create({
@@ -85,6 +177,8 @@ export const richExtensions = () => [
   TableHeader,
   TableCell,
   HtmlBlock,
+  ImageFigure,
+  SmallPrint,
   GlossaryTerm,
 ];
 
@@ -98,6 +192,13 @@ const Btn: FC<{ tip: string; onClick: () => void; children: React.ReactNode }> =
     {children}
   </div>
 );
+
+/** An image figure node with its caption as text. */
+export const figure = (src: string, alt: string, caption = '') => ({
+  type: 'imageFigure',
+  attrs: { src, alt },
+  content: caption.trim() ? [{ type: 'text', text: caption.trim() }] : [],
+});
 
 /** Extra toolbar buttons for rich mode. Prompts keep it simple and dependency-free. */
 export const RichToolbar: FC<{ editor: any; onPickImages?: (files: File[]) => boolean }> = ({
@@ -141,10 +242,48 @@ export const RichToolbar: FC<{ editor: any; onPickImages?: (files: File[]) => bo
           const src = ask('Image URL (upload it in Insert Media first, then copy its link)');
           if (!src) return;
           const alt = ask('Alt text (what the image shows)') ?? '';
-          editor.chain().focus().setImage({ src, alt }).run();
+          const caption = ask('Caption (who, where, when; leave empty for none)') ?? '';
+          editor.chain().focus().insertContent(figure(src, alt, caption)).run();
         }}
       >
         IMG
+      </Btn>
+      <Btn
+        tip="Caption: click an image first. A captioned image's caption is typed straight under it"
+        onClick={() => {
+          const sel = editor.state.selection;
+          const node = sel?.node;
+          if (node?.type?.name === 'image') {
+            const caption = ask('Caption (who, where, when)') ?? '';
+            editor.chain().focus().insertContentAt({ from: sel.from, to: sel.to }, figure(node.attrs.src, node.attrs.alt || '', caption)).run();
+          } else if (editor.isActive('imageFigure')) {
+            const current = (node?.type?.name === 'imageFigure' ? node : sel.$from.parent)?.textContent ?? '';
+            const caption = ask('Caption (who, where, when). Empty removes it', current);
+            if (caption === null) return;
+            const pos = node?.type?.name === 'imageFigure' ? sel.from : sel.$from.before();
+            const fig = editor.state.doc.nodeAt(pos);
+            if (fig) editor.chain().focus().insertContentAt({ from: pos, to: pos + fig.nodeSize }, figure(fig.attrs.src, fig.attrs.alt, caption)).run();
+          } else if (typeof window !== 'undefined') {
+            window.alert('Click an image first, then CAP.');
+          }
+        }}
+      >
+        CAP
+      </Btn>
+      <Btn
+        tip="Alt text: click an image first (what the image shows, for screen readers)"
+        onClick={() => {
+          const sel = editor.state.selection;
+          const type = sel?.node?.type?.name === 'image' ? 'image' : editor.isActive('imageFigure') ? 'imageFigure' : '';
+          if (!type) {
+            if (typeof window !== 'undefined') window.alert('Click an image first, then ALT.');
+            return;
+          }
+          const alt = ask('Alt text (what the image shows)', editor.getAttributes(type)?.alt || '');
+          if (alt !== null) editor.chain().focus().updateAttributes(type, { alt }).run();
+        }}
+      >
+        ALT
       </Btn>
       <Btn
         tip="YouTube video"

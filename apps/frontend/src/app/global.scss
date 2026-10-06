@@ -822,3 +822,30 @@ html[dir='rtl'] [dir='ltr'] {
   text-shadow: -1px -1px 0 black, 1px -1px 0 black, -1px 1px 0 black,
     1px 1px 0 black;
 }
+
+/* x-hakt: captionable image figures and the credits small print in the rich (site article) editor */
+.ProseMirror figure {
+  margin: 12px 0;
+}
+.ProseMirror figure > img {
+  max-width: 100%;
+  display: block;
+}
+.ProseMirror figure > figcaption {
+  font-size: 13px;
+  opacity: 0.85;
+  margin-top: 4px;
+  padding: 2px 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.25);
+  min-height: 1.4em;
+}
+.ProseMirror figure > figcaption:empty::before,
+.ProseMirror figure > figcaption:has(> br.ProseMirror-trailingBreak:only-child)::before {
+  content: 'Caption: who, where, when (optional)';
+  opacity: 0.45;
+  pointer-events: none;
+}
+.ProseMirror div[data-html-block] small {
+  font-size: 12px;
+  opacity: 0.8;
+}

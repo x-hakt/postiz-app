@@ -67,7 +67,7 @@ import {
   DelayIcon,
 } from '@gitroom/frontend/components/ui/icons';
 import { DelayComponent } from '@gitroom/frontend/components/new-launch/delay.component';
-import { richExtensions, RichToolbar } from '@gitroom/frontend/components/new-launch/rich.extensions';
+import { richExtensions, RichToolbar, figure } from '@gitroom/frontend/components/new-launch/rich.extensions';
 
 const MAX_UPLOAD_SIZE = 1024 * 1024 * 1024; // 1 GB
 
@@ -584,7 +584,8 @@ export const Editor: FC<{
       const editor = editorRef?.current?.editor;
       for (const media of result || []) {
         if (media?.path) {
-          editor?.chain().focus().setImage({ src: media.path, alt: '' }).run();
+          // A captionable figure: the caption is typed straight under the image.
+          editor?.chain().focus().insertContent(figure(media.path, '')).run();
         }
       }
       inlineUppy.clear();
@@ -979,7 +980,8 @@ export const OnlyEditor = forwardRef<
                   // prevent transforming plain emails like foo@bar.com into links
                   const trimmed = String(url).trim();
                   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                  if (emailPattern.test(trimmed)) {
+                  // (an explicit mailto: link matches the pattern too; site articles keep those)
+                  if (emailPattern.test(trimmed) && !(editorType === 'rich' && /^mailto:/i.test(trimmed))) {
                     return false;
                   }
 
@@ -994,7 +996,8 @@ export const OnlyEditor = forwardRef<
                   }
 
                   // disallowed protocols
-                  const disallowedProtocols = ['ftp', 'file', 'mailto'];
+                  // x-hakt: site articles keep mailto links (the credits' contact address); social posts don't
+                  const disallowedProtocols = editorType === 'rich' ? ['ftp', 'file'] : ['ftp', 'file', 'mailto'];
                   const protocol = parsedUrl.protocol.replace(':', '');
 
                   if (disallowedProtocols.includes(protocol)) {
@@ -1006,7 +1009,7 @@ export const OnlyEditor = forwardRef<
                     typeof p === 'string' ? p : p.scheme
                   );
 
-                  if (!allowedProtocols.includes(protocol)) {
+                  if (!allowedProtocols.includes(protocol) && !(editorType === 'rich' && protocol === 'mailto')) {
                     return false;
                   }
 
