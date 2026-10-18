@@ -11,12 +11,19 @@ export const VideoOrImage: FC<{
   const { src, autoplay, isContain, imageClassName, videoClassName } = props;
   if (hasExtension(src, 'mp4')) {
     return (
+      // x-hakt: controls, so a Reel can be played WITH its sound before scheduling (the operator had no way to
+      // hear a draft's audio in Postiz). It still autoplays muted where it autoplays (browsers block autoplay
+      // with sound); the controls unmute it. playsInline keeps phones from jumping to fullscreen.
       <video
         src={src}
         autoPlay={autoplay}
         className={clsx('w-full h-full', videoClassName)}
-        muted={true}
+        muted={autoplay}
         loop={true}
+        controls={true}
+        playsInline={true}
+        preload="metadata"
+        onClick={(e) => e.stopPropagation()}
       />
     );
   }
