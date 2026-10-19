@@ -849,3 +849,17 @@ html[dir='rtl'] [dir='ltr'] {
   font-size: 12px;
   opacity: 0.8;
 }
+/* x-hakt (2026-10-19): wide HTML blocks (a 17-card carousel is ~3,800px, tables) scroll inside
+   themselves instead of widening the editor. The editor sits in flex rows with min-width:auto, so
+   one wide block stretched every paragraph past the modal's clipped edge, with no way to scroll.
+   contain:inline-size stops a block's content counting towards the editor's width. */
+.ProseMirror,
+.preview {
+  overflow-wrap: anywhere;
+}
+.ProseMirror div[data-html-block],
+.preview div[data-html-block] {
+  contain: inline-size;
+  max-width: 100%;
+  overflow-x: auto;
+}
