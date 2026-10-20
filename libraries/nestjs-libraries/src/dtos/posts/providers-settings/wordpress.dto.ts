@@ -38,6 +38,12 @@ export class WordpressDto {
   @IsNumber({}, { each: true })
   tags?: number[];
 
+  // x-hakt: tag names the site doesn't have yet; the provider creates them (POST /tags) on publish.
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  new_tags?: string[];
+
   @IsOptional()
   @IsString()
   @IsIn(['publish', 'draft', 'pending', 'private'])

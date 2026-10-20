@@ -277,13 +277,41 @@ export class WordpressProvider
     }));
   }
 
+  // x-hakt: tags typed in the settings that the site may not have yet. WordPress creates a tag
+  // with POST /tags { name } and answers 400 term_exists (with its id) for one it already has.
+  // A tag that can't be created is left off rather than failing the post. Plain fetch + SSRF
+  // guard, because sitePreview calls this outside a Temporal activity too.
+  private async newTagIds(domain: string, auth: string, names: unknown): Promise<number[]> {
+    const list = (Array.isArray(names) ? names : [])
+      .map((name) => String(name).trim().replace(/^#+/, '').trim())
+      .filter(Boolean);
+    const ids: number[] = [];
+    for (const name of list) {
+      try {
+        const response = await fetch(`${domain}/wp-json/wp/v2/tags`, {
+          method: 'POST',
+          headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name }),
+          // @ts-ignore - undici-only option; blocks SSRF to internal IPs
+          dispatcher: getSsrfSafeDispatcher(),
+        });
+        const json = await response.json().catch(() => ({}));
+        const id = Number(response.ok ? json?.id : json?.data?.term_id);
+        if (Number.isInteger(id) && id > 0 && !ids.includes(id)) ids.push(id);
+      } catch {
+        // skipped: the post still goes out with its other tags
+      }
+    }
+    return ids;
+  }
+
   // x-hakt (PLN-25): ask the site to render a draft exactly as it will publish it, for the
   // editor's Site preview. The site answers POST /wp-json/wp/v2/preview with { html } (a whole
   // page); plain WordPress has no such route, so a 404 just means "no site preview here".
   // Called through /integrations/function, not a Temporal activity, so plain fetch + SSRF guard.
   async sitePreview(
     token: string,
-    data: { title?: string; content?: string; type?: string; categories?: number[]; tags?: number[]; rating?: string }
+    data: { title?: string; content?: string; type?: string; categories?: number[]; tags?: number[]; new_tags?: string[]; rating?: string }
   ) {
     const body = JSON.parse(Buffer.from(token, 'base64').toString()) as {
       domain: string;
@@ -293,6 +321,7 @@ export class WordpressProvider
     const domain = body.domain.trim().replace(/\/+$/, '');
     const auth = Buffer.from(`${body.username}:${body.password}`).toString('base64');
     try {
+      const tags = [...(data?.tags || []), ...(await this.newTagIds(domain, auth, data?.new_tags))];
       const response = await fetch(`${domain}/wp-json/wp/v2/preview`, {
         method: 'POST',
         headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
@@ -301,7 +330,7 @@ export class WordpressProvider
           content: data?.content || '',
           type: data?.type || '',
           categories: data?.categories || [],
-          tags: data?.tags || [],
+          tags,
           ...(data?.rating ? { meta: { rating: Number(data.rating) } } : {}),
         }),
         // @ts-ignore - undici-only option; blocks SSRF to internal IPs
@@ -427,6 +456,9 @@ export class WordpressProvider
     const tags = (postDetails?.[0]?.settings?.tags || [])
       .map((tag) => Number(tag))
       .filter((tag) => !isNaN(tag));
+    for (const id of await this.newTagIds(body.domain, auth, postDetails?.[0]?.settings?.new_tags)) {
+      if (!tags.includes(id)) tags.push(id);
+    }
 
     const submit = await (
       await this.fetch(

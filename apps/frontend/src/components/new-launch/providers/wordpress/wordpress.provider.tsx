@@ -10,6 +10,7 @@ import { Select } from '@gitroom/react/form/select';
 import { useSettings } from '@gitroom/frontend/components/launches/helpers/use.values';
 import { WordpressPostType } from '@gitroom/frontend/components/new-launch/providers/wordpress/wordpress.post.type';
 import { WordpressTerms } from '@gitroom/frontend/components/new-launch/providers/wordpress/wordpress.terms';
+import { WordpressNewTags } from '@gitroom/frontend/components/new-launch/providers/wordpress/wordpress.new.tags';
 import { MediaComponent } from '@gitroom/frontend/components/media/media.component';
 import {
   WordpressDto,
@@ -39,6 +40,8 @@ const WordpressSettings: FC = () => {
         func="tagsList"
         {...form.register('tags')}
       />
+      {/* x-hakt: tags the site doesn't have yet, created when the post publishes */}
+      <WordpressNewTags {...form.register('new_tags')} />
       {/* x-hakt: reviews carry a star rating, sent to the site as meta.rating */}
       {form.watch('type') === 'review' && (
         <Select label="Star rating" {...form.register('rating', { value: '' })}>

@@ -23,6 +23,7 @@ export const WordpressPreview: FC<{ maximumCharacters?: number }> = () => {
   const type: string = form?.watch?.('type') || '';
   const categories: number[] = form?.watch?.('categories') || [];
   const tags: number[] = form?.watch?.('tags') || [];
+  const newTags: string[] = form?.watch?.('new_tags') || [];
   const rating: string = form?.watch?.('rating') || '';
   const content = (value || []).map((p) => p.content).join('');
   const [result, setResult] = useState<Result | null>(null);
@@ -34,7 +35,7 @@ export const WordpressPreview: FC<{ maximumCharacters?: number }> = () => {
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        const r: Result = await customFunc.get('sitePreview', { title, content, type, categories, tags, rating });
+        const r: Result = await customFunc.get('sitePreview', { title, content, type, categories, tags, new_tags: newTags, rating });
         if (mine === seq.current) setResult(r || { available: false });
       } catch {
         if (mine === seq.current) setResult({ available: true, error: 'Preview failed.' });
@@ -43,7 +44,7 @@ export const WordpressPreview: FC<{ maximumCharacters?: number }> = () => {
       }
     }, 900);
     return () => clearTimeout(timer);
-  }, [title, content, type, rating, JSON.stringify(categories), JSON.stringify(tags)]);
+  }, [title, content, type, rating, JSON.stringify(categories), JSON.stringify(tags), JSON.stringify(newTags)]);
 
   return (
     <div className="flex flex-col gap-[8px] w-full">

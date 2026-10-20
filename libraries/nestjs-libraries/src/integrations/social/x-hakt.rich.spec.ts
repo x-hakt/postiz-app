@@ -113,6 +113,31 @@ describe('rich content (x-hakt PLN-25)', () => {
     }
   });
 
+  it('WordPress creates new tags on the site (POST /tags) and sends their ids with the rest', async () => {
+    const wp: any = new WordpressProvider();
+    const token = Buffer.from(JSON.stringify({ domain: 'https://site.example', username: 'planner', password: 'pw' })).toString('base64');
+    const calls: any[] = [];
+    const realFetch = global.fetch;
+    const reply = (status: number, body: any) => ({ status, ok: status < 400, json: async () => body });
+    try {
+      (global as any).fetch = jest.fn(async (url: string, init: any) => {
+        calls.push({ url, body: JSON.parse(init.body) });
+        if (url.endsWith('/tags')) {
+          const name = JSON.parse(init.body).name;
+          if (name === 'FinalFantasy') return reply(400, { code: 'term_exists', data: { status: 400, term_id: 7 } });
+          if (name === 'Broken') return reply(500, {});
+          return reply(201, { id: 9, name });
+        }
+        return reply(200, { html: '<html></html>' });
+      });
+      await wp.sitePreview(token, { title: 'T', content: '<p>x</p>', tags: [3], new_tags: ['#SquareEnix', 'FinalFantasy', 'Broken', ' '] });
+      expect(calls.filter((c) => c.url.endsWith('/tags')).map((c) => c.body.name)).toEqual(['SquareEnix', 'FinalFantasy', 'Broken']);
+      expect(calls.at(-1).body.tags).toEqual([3, 9, 7]);
+    } finally {
+      (global as any).fetch = realFetch;
+    }
+  });
+
   it("sends a review's star rating to the site as meta.rating, in previews and when publishing", async () => {
     const wp: any = new WordpressProvider();
     const token = Buffer.from(JSON.stringify({ domain: 'https://site.example', username: 'planner', password: 'pw' })).toString('base64');
