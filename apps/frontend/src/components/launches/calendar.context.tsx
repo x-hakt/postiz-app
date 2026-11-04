@@ -23,6 +23,7 @@ import useCookie from 'react-use-cookie';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { expandPostsList, expandPosts } from '@gitroom/helpers/utils/posts.list.minify';
+import { isHiddenByDefault } from '@gitroom/helpers/utils/x-hakt.calendar.status';
 extend(isoWeek);
 extend(weekOfYear);
 
@@ -82,6 +83,11 @@ export const CalendarContext = createContext({
   },
   listState: 'all' as ListStateFilter,
   setListState: (state: ListStateFilter) => {
+    /** empty **/
+  },
+  // x-hakt (PLN-43): Done / Skip cards are hidden unless this is on
+  showDone: false,
+  setShowDone: (show: boolean) => {
     /** empty **/
   },
 });
@@ -147,6 +153,12 @@ export const CalendarWeekProvider: FC<{
   const searchParams = useSearchParams();
   const [displaySaved, setDisplaySaved] = useCookie('calendar-display', 'week');
   const display = searchParams.get('display') || displaySaved;
+  const [showDoneSaved, setShowDoneSaved] = useCookie('calendar-show-done', 'false');
+  const showDone = showDoneSaved === 'true';
+  const setShowDone = useCallback(
+    (show: boolean) => setShowDoneSaved(show ? 'true' : 'false'),
+    [setShowDoneSaved]
+  );
 
   // List view state
   const [listPage, setListPage] = useState(0);
@@ -334,13 +346,22 @@ export const CalendarWeekProvider: FC<{
   // Determine loading state based on current view
   const loading = filters.display === 'list' ? listIsLoading : calendarIsLoading;
 
+  const visiblePosts = useMemo(
+    () => (showDone ? internalData : internalData.filter((p) => !isHiddenByDefault(p))),
+    [internalData, showDone]
+  );
+  const visibleListPosts = useMemo(
+    () => (showDone ? listPosts : listPosts.filter((p: any) => !isHiddenByDefault(p))),
+    [listPosts, showDone]
+  );
+
   return (
     <CalendarContext.Provider
       value={{
         trendings,
         reloadCalendarView,
         ...filters,
-        posts: calendarIsLoading ? [] : internalData,
+        posts: calendarIsLoading ? [] : visiblePosts,
         loading,
         integrations,
         setFilters: setFiltersWrapper,
@@ -349,12 +370,14 @@ export const CalendarWeekProvider: FC<{
         sets: sets || [],
         signature: sign,
         // List view specific
-        listPosts,
+        listPosts: visibleListPosts,
         listPage,
         listTotalPages,
         setListPage,
         listState,
         setListState,
+        showDone,
+        setShowDone,
       }}
     >
       {children}

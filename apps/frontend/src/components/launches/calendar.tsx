@@ -59,6 +59,11 @@ import copy from 'copy-to-clipboard';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 import { Button } from '@gitroom/react/form/button';
+import {
+  calendarStatus,
+  CALENDAR_STATUS_STYLE,
+  siteColor,
+} from '@gitroom/helpers/utils/x-hakt.calendar.status';
 
 // Extend dayjs with necessary plugins
 extend(isSameOrAfter);
@@ -1029,6 +1034,10 @@ const CalendarItem: FC<{
   const preview = useCallback(() => {
     window.open(`/p/` + post.id + '?share=true', '_blank');
   }, [post]);
+  // x-hakt (PLN-43): colour by what the card needs, edge by site
+  const status = calendarStatus({ state, tags: post.tags });
+  const statusStyle = CALENDAR_STATUS_STYLE[status];
+  const edgeColor = siteColor(post.integration?.name);
   const [{ opacity }, dragRef] = useDrag(
     () => ({
       type: 'post',
@@ -1075,25 +1084,25 @@ const CalendarItem: FC<{
       )}
       <div
         className={clsx(
-          'text-white text-[11px] max-h-[24px] h-[24px] min-h-[24px] w-full rounded-tr-[10px] rounded-tl-[10px] flex items-center justify-center gap-[10px] px-[5px] bg-btnPrimary'
+          'text-white text-[11px] max-h-[24px] h-[24px] min-h-[24px] w-full rounded-tr-[10px] rounded-tl-[10px] flex items-center justify-center gap-[10px] px-[5px]'
         )}
         style={{
-          backgroundColor: post?.tags?.[0]?.tag?.color,
+          backgroundColor: statusStyle.color,
         }}
       >
-        <div
-          className={clsx(
-            post?.tags?.[0]?.tag?.color ? 'mix-blend-difference' : '',
-            'group-hover:hidden cursor-pointer'
-          )}
-        >
-          {post.tags.map((p) => p.tag.name).join(', ')}
+        <div className="group-hover:hidden cursor-pointer font-[600] truncate">
+          {statusStyle.label}
+          {post.tags.length ? (
+            <span className="font-[400] opacity-80">
+              {' · '}
+              {post.tags.map((p) => p.tag.name).join(', ')}
+            </span>
+          ) : null}
         </div>
         {copyDebugJson && (
           <div
             className={clsx(
-              'hidden group-hover:block hover:underline cursor-pointer',
-              post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
+              'hidden group-hover:block hover:underline cursor-pointer'
             )}
             onClick={copyDebugJson}
           >
@@ -1102,8 +1111,7 @@ const CalendarItem: FC<{
         )}
         <div
           className={clsx(
-            'hidden group-hover:block hover:underline cursor-pointer',
-            post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
+            'hidden group-hover:block hover:underline cursor-pointer'
           )}
           onClick={duplicatePost}
         >
@@ -1111,8 +1119,7 @@ const CalendarItem: FC<{
         </div>
         <div
           className={clsx(
-            'hidden group-hover:block hover:underline cursor-pointer',
-            post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
+            'hidden group-hover:block hover:underline cursor-pointer'
           )}
           onClick={preview}
         >
@@ -1123,8 +1130,7 @@ const CalendarItem: FC<{
         ) : post.releaseId === 'missing' && missingRelease ? (
           <div
             className={clsx(
-              'hidden group-hover:block hover:underline cursor-pointer',
-              post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
+              'hidden group-hover:block hover:underline cursor-pointer'
             )}
             onClick={missingRelease}
           >
@@ -1133,8 +1139,7 @@ const CalendarItem: FC<{
         ) : post.releaseId !== 'missing' ? (
           <div
             className={clsx(
-              'hidden group-hover:block hover:underline cursor-pointer',
-              post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
+              'hidden group-hover:block hover:underline cursor-pointer'
             )}
             onClick={statistics}
           >
@@ -1145,8 +1150,7 @@ const CalendarItem: FC<{
         )}{' '}
         <div
           className={clsx(
-            'hidden group-hover:block hover:underline cursor-pointer',
-            post?.tags?.[0]?.tag?.color && 'mix-blend-difference'
+            'hidden group-hover:block hover:underline cursor-pointer'
           )}
           onClick={deletePost}
         >
@@ -1156,24 +1160,28 @@ const CalendarItem: FC<{
       <div
         onClick={editPost}
         className={clsx(
-          'gap-[5px] w-full flex h-full flex-1 rounded-br-[10px] rounded-bl-[10px] p-[8px] text-[14px] bg-newColColor',
+          'gap-[6px] w-full flex h-full flex-1 rounded-br-[10px] rounded-bl-[10px] p-[8px] ps-[6px] text-[14px] bg-newColColor border-s-[5px]',
           'relative',
-          isBeforeNow && '!grayscale'
+          status === 'posted' && 'opacity-60 !grayscale'
         )}
+        style={{ borderInlineStartColor: edgeColor }}
       >
-        <div className={clsx('relative min-w-[20px]')}>
+        <div className={clsx('relative min-w-[30px] h-[30px]')}>
           <img
-            className="w-[20px] h-[20px] rounded-[8px]"
+            className="w-[26px] h-[26px] rounded-[8px]"
             src={post.integration.picture! || '/no-picture.jpg'}
           />
           <img
-            className="w-[12px] h-[12px] rounded-[8px] absolute z-10 top-[10px] end-0 border border-fifth"
+            className="w-[16px] h-[16px] rounded-[5px] absolute z-10 bottom-0 end-0 border border-fifth"
             src={`/icons/platforms/${post.integration?.providerIdentifier}.png`}
           />
         </div>
-        <div className="w-full flex-1 flex flex-col min-h-[40px]">
-          <div className="text-start">
-            {state === 'DRAFT' ? t('draft', 'Draft') + ': ' : ''}
+        <div className="w-full flex-1 flex flex-col min-h-[40px] min-w-0">
+          <div
+            className="text-start text-[11px] font-[700] leading-[14px] truncate"
+            style={{ color: edgeColor }}
+          >
+            {post.integration?.name}
           </div>
             <div className="w-full relative">
               <div className="absolute top-0 start-0 w-full text-ellipsis break-words line-clamp-1 text-start">

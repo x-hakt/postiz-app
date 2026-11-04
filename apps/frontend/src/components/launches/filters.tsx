@@ -8,6 +8,7 @@ import { SelectCustomer } from '@gitroom/frontend/components/launches/select.cus
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import i18next from 'i18next';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
+import { CALENDAR_STATUS_STYLE } from '@gitroom/helpers/utils/x-hakt.calendar.status';
 
 // Helper function to get start and end dates based on display type
 function getDateRange(
@@ -426,6 +427,29 @@ export const Filters = () => {
           <div className="flex-1" />
         </div>
       )}
+      {/* x-hakt (PLN-43): what the card colours mean, and the Done / Skip cards toggle */}
+      <div className="hidden xl:flex flex-row items-center gap-[12px] text-[12px] px-[4px]">
+        {(['topic', 'scheduled', 'posted', 'attention'] as const).map((s) => (
+          <div key={s} className="flex items-center gap-[5px]">
+            <div
+              className="w-[10px] h-[10px] rounded-[3px]"
+              style={{ backgroundColor: CALENDAR_STATUS_STYLE[s].color }}
+            />
+            {CALENDAR_STATUS_STYLE[s].label}
+          </div>
+        ))}
+      </div>
+      <div
+        onClick={() => calendar.setShowDone(!calendar.showDone)}
+        className={clsx(
+          'h-[42px] px-[12px] flex items-center rounded-[8px] cursor-pointer text-[14px] font-[500] border border-newTableBorder whitespace-nowrap',
+          calendar.showDone
+            ? 'text-textItemFocused bg-boxFocused'
+            : 'bg-newBgColorInner hover:text-textItemFocused hover:bg-boxFocused'
+        )}
+      >
+        {calendar.showDone ? 'Hide done' : 'Show done'}
+      </div>
       <SelectCustomer
         customer={calendar.customer as string}
         onChange={(customer: string) => setCustomer(customer)}
